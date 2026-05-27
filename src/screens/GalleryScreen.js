@@ -7,6 +7,7 @@ import { insertPhoto, fetchAllPhotos, deletePhoto } from '../database/database';
 export default function GalleryScreen() {
   const [title, setTitle] = useState('');
   const [photos, setPhotos] = useState([]);
+  const [searchQuery, setSearchQuery] = useState(''); // Estado para a barra de busca (Diferencial Extra)
   const [loading, setLoading] = useState(false);
 
   // Função para carregar as fotos salvas no SQLite (Requisito Obrigatório)
@@ -19,7 +20,6 @@ export default function GalleryScreen() {
     }
   };
 
-  // Carrega as fotos assim que a tela abre
   useEffect(() => {
     loadPhotos();
   }, []);
@@ -30,6 +30,7 @@ export default function GalleryScreen() {
       return;
     }
 
+    // Solicitar permissões nativas (Obrigatório)
     const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
     const libraryPermission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
@@ -38,6 +39,7 @@ export default function GalleryScreen() {
       return;
     }
 
+    // Abrir a câmera do dispositivo
     let result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       aspect: [4, 3],
@@ -49,10 +51,11 @@ export default function GalleryScreen() {
 
       setLoading(true);
       try {
+        // Obter localização no exato momento (Requisito Obrigatório)
         const locationPermission = await Location.requestForegroundPermissionsAsync();
         
         if (!locationPermission.granted) {
-          Alert.alert("Permissão Negada", "GPS recusado. Não é possível georreferenciar.");
+          Alert.alert("Permissão Negada", "GPS recusado. Localização não registrada.");
           setLoading(false);
           return;
         }
@@ -63,17 +66,15 @@ export default function GalleryScreen() {
 
         const { latitude, longitude } = currentUserLocation.coords;
 
-        // Grava no SQLite
+        // Grava no SQLite usando o novo banco assíncrono parametrizado
         await insertPhoto(title, selectedImageUri, latitude, longitude);
         
-        Alert.alert("Sucesso!", "Imagem e localização salvas!");
+        Alert.alert("Sucesso!", "Imagem, data e localização salvas!");
         setTitle('');
-        
-        // Recarrega a lista de fotos na tela imediatamente
-        loadPhotos();
+        loadPhotos(); // Atualiza a galeria automaticamente
 
       } catch (error) {
-        Alert.alert("Erro", "Ocorreu um erro ao salvar os dados.");
+        Alert.alert("Erro", "Ocorreu um erro ao salvar no banco sem quebrar o app.");
         console.error(error);
       } finally {
         setLoading(false);
@@ -81,11 +82,10 @@ export default function GalleryScreen() {
     }
   };
 
-  // Função para apagar uma foto (Requisito Obrigatório)
   const handleDelete = (id) => {
     Alert.alert(
       "Confirmar Exclusão",
-      "Tem certeza que deseja apagar esta foto do banco de dados?",
+      "Deseja apagar permanentemente esta foto?",
       [
         { text: "Cancelar", style: "cancel" },
         { 
@@ -93,12 +93,17 @@ export default function GalleryScreen() {
           style: "destructive",
           onPress: async () => {
             await deletePhoto(id);
-            loadPhotos(); // Atualiza a lista na tela
+            loadPhotos();
           }
         }
       ]
     );
   };
+
+  // Filtra as fotos com base no texto digitado na busca (Diferencial Extra)
+  const filteredPhotos = photos.filter(photo => 
+    photo.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -118,17 +123,25 @@ export default function GalleryScreen() {
         color="#007bff" 
       />
 
-      <Text style={styles.sectionTitle}>📋 Minhas Fotos Salvas ({photos.length})</Text>
+      <Text style={styles.sectionTitle}>📋 Minhas Fotos Salvas</Text>
 
-      {/* Grid de Fotos Salvas */}
+      {/* Barra de Pesquisa (Extra Diferencial) */}
+      <TextInput
+        style={styles.searchInput}
+        placeholder="🔍 Buscar por título..."
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+      />
+
+      {/* Grid de Fotos */}
       <View style={styles.grid}>
-        {photos.map((item) => (
+        {filteredPhotos.map((item) => (
           <View key={item.id} style={styles.card}>
             <Image source={{ uri: item.image_uri }} style={styles.cardImage} />
             <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>{item.title}</Text>
+              <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+              <Text style={styles.cardDate}>📅 {new Date(item.created_at).toLocaleDateString('pt-BR')}</Text>
               <Text style={styles.cardCoords}>Lat: {item.latitude?.toFixed(4)}</Text>
-              <Text style={styles.cardCoords}>Lon: {item.longitude?.toFixed(4)}</Text>
               
               <TouchableOpacity style={styles.deleteButton} onPress={() => handleDelete(item.id)}>
                 <Text style={styles.deleteButtonText}>Excluir</Text>
@@ -144,15 +157,17 @@ export default function GalleryScreen() {
 const windowWidth = Dimensions.get('window').width;
 
 const styles = StyleSheet.create({
-  container: { padding: 20, alignItems: 'center', backgroundColor: '#fff' },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: '#333' },
-  input: { width: '100%', height: 45, borderColor: '#ccc', borderWidth: 1, borderRadius: 5, paddingHorizontal: 10, marginBottom: 20, fontSize: 16 },
-  sectionTitle: { fontSize: 20, fontWeight: 'bold', marginTop: 30, marginBottom: 15, alignSelf: 'flex-start', color: '#333' },
+  container: { padding: 20, alignItems: 'center', backgroundColor: '#fff', paddingBottom: 100 },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: '#333', marginTop: 30 },
+  input: { width: '100%', height: 45, borderColor: '#ccc', borderWidth: 1, borderRadius: 5, paddingHorizontal: 10, marginBottom: 20 },
+  searchInput: { width: '100%', height: 40, borderColor: '#007bff', borderWidth: 1, borderRadius: 20, paddingHorizontal: 15, marginBottom: 20, backgroundColor: '#f1f3f5' },
+  sectionTitle: { fontSize: 20, fontWeight: 'bold', marginTop: 30, marginBottom: 15, alignSelf: 'flex-start' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', width: '100%' },
-  card: { width: (windowWidth - 50) / 2, backgroundColor: '#f8f9fa', borderRadius: 8, marginBottom: 15, borderWidth: 1, borderColor: '#eee', overflow: 'hidden' },
-  cardImage: { width: '100%', height: 120, resizeMode: 'cover' },
+  card: { width: (windowWidth - 55) / 2, backgroundColor: '#f8f9fa', borderRadius: 8, marginBottom: 15, borderWidth: 1, borderColor: '#eee', overflow: 'hidden' },
+  cardImage: { width: '100%', height: 120 },
   cardContent: { padding: 8 },
-  cardTitle: { fontSize: 14, fontWeight: 'bold', color: '#333', marginBottom: 4 },
+  cardTitle: { fontSize: 13, fontWeight: 'bold', color: '#333' },
+  cardDate: { fontSize: 11, color: '#28a745', fontWeight: 'bold', marginVertical: 3 },
   cardCoords: { fontSize: 11, color: '#666' },
   deleteButton: { marginTop: 8, backgroundColor: '#dc3545', paddingVertical: 4, borderRadius: 4, alignItems: 'center' },
   deleteButtonText: { color: '#fff', fontSize: 12, fontWeight: 'bold' }
