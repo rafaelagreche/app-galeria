@@ -40,14 +40,14 @@ export default function App() {
           style={[styles.tabItem, currentTab === 'gallery' && styles.activeTabItem]} 
           onPress={() => setCurrentTab('gallery')}
         >
-          <Text style={[styles.tabText, currentTab === 'gallery' && styles.activeTabText]}>📸 Galeria</Text>
+          <Text style={[styles.tabText, currentTab === 'gallery' && styles.activeTabText]}> Galeria</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={[styles.tabItem, currentTab === 'map' && styles.activeTabItem]} 
           onPress={() => setCurrentTab('map')}
         >
-          <Text style={[styles.tabText, currentTab === 'map' && styles.activeTabText]}>🗺️ Mapa</Text>
+          <Text style={[styles.tabText, currentTab === 'map' && styles.activeTabText]}> Mapa</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -63,11 +63,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     height: 60,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
-    backgroundColor: '#f8f9fa'
+    borderTopColor: '#0026a3',
+    backgroundColor: '#35699e'
   },
   tabItem: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   activeTabItem: { backgroundColor: '#e9ecef' },
-  tabText: { fontSize: 16, color: '#666', fontWeight: '500' },
-  activeTabText: { color: '#007bff', fontWeight: 'bold' }
+  tabText: { fontSize: 16, color: '#bbb6b6', fontWeight: '500' },
+  activeTabText: { color: '#014a99', fontWeight: 'bold' }
 });
